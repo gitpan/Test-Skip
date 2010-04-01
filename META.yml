@@ -13,9 +13,9 @@ name: Test-Skip
 provides:
   Test::Skip:
     file: lib/Test/Skip.pm
-    version: 0.01_1
+    version: 0.01_2
 requires:
   Sub::Exporter: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.01_1
+version: 0.01_2

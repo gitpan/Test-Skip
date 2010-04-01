@@ -4,7 +4,6 @@ package Test::Skip ;
 
 use strict;
 use warnings ;
-use Carp ;
 
 BEGIN 
 {
@@ -19,12 +18,14 @@ use Sub::Exporter -setup =>
 	exports => [ qw() ],
 	groups  => 
 		{
-		all  => [ qw() ],
+		all  => [ qw(:skip_all_tests :skip_tests) ],
+		skip_tests => [qw(skip_tests skip_tests_unless skip_tests_if)],
+		skip_all_tests => [qw(skip_all_tests skip_all_tests_unless skip_all_tests_if)],
 		}
 	};
 	
 use vars qw ($VERSION);
-$VERSION     = '0.01_1';
+$VERSION     = '0.01_2';
 }
 
 #-------------------------------------------------------------------------------
@@ -40,57 +41,86 @@ use Carp qw(carp croak confess) ;
 
 =head1 NAME
 
-Test::Skip - Framework to skip tests under certain conditions
+Test::Skip - Framework to skip tests unless conditions are met
 
 =head1 SYNOPSIS
 
+  # load time decision, all the tests in the file will be skipped
+  # unless all the conditions are met
+
   use Test::Skip
   	{
-	comment => 'test XXX under linux and XP',
+	description => 'pre-requisits to test XXX',
+	 
+	# dump all the condition and their state unless all conditions are met 
+	verbose => 1,
 
-	has =>
+	unless_has =>
 		{
-		executables => [ 'some_binary', 'another_binary' ],
+		executables => [ '/usr/bin/rsync', 'git' ],
 		modules => ['IPC::Run', ['Data::TreeDumper' => 0.36 ]] ,
 		os => [ 'linux', ['Win32' => 'XP']]
 		},
 
-	has_no => 
+	if_has => 
 		{
 		modules => 
 			{
-			comment => 'Safe is too old!',
+			error_text => 'module "Safe" is too old!',
 			modules => ['Safe' => '<2.26'] 
 			},
+
+		user_check =>
+			{
+			'command ps(1) does not supply VSIZE' => \&check_ps_for_VSIZE_field,
+			},
 		}
-	}
+
+	# use existing modules that implement Skip functionality
+	plugins => {executables => 'Test::Skip::UnlessExistsExecutable'},
+	} ;
 
   #---------------------------------------------------
-
+  
+  # run time decision
   use Test::Skip qw(:skip_all_test) ;
-  skip_all_test_unless 'modules' => 'IPC::Run, 'no IPC::Run, needed for test xxx' ;
+
+  # single pre-requisits
+  #
+  skip_all_tests_unless 'modules' => 'IPC::Run, 'no IPC::Run, needed for test xxx' ;
+  skip_all_tests_if 'modules' => ['Safe' => '<2.26'], 'tests need modern versions of Safe'
+
+  # many pre-requisits
+
+  skip_all_tests \%prerequisits, 'text displayed if tests are skipped' ;
 
   #---------------------------------------------------
 
-  use Test::Skip qw(:skip_test) ;  # Test::Block style
-
-  skip_test  \%pre_requisits 
+  # run time decision, Test::Block style
+  use Test::Skip qw(:skip_test) ;  
+  
+  skip_tests_if 'modules' => ['Safe' => '<2.26'] 
   	{
-	# many tests in this block 
+	# many tests using a moder Safe in this block 
+	}, 'tests need modern versions of Safe' ;
+
+  my %prerequisits =
+  	{
+        unless_has => { executables => '/usr/bin/rsync', ...},
+	if_has => { ... }, 
 	} ;
 
-  skip_test  \%pre_requisits
-        {
+  skip_tests \%prerequisits
+	{
 	# many tests in this block
-	} ;
+	}, 'prerequists missing for test XXX' ;
 
 
 =head1 DESCRIPTION
 
-* As of version 0.01_1, this is a placeholder. Please give feedback on the API *
+* This is a placeholder with no implementation yet. Please give feedback on the API *
 
-This module implements a framework wich run plugins that verify certain conditions
-and skips tests.
+This module implements a framework that skips tests unless the specified pre-requisits are met.
 
 =head1 DOCUMENTATION
 
@@ -115,7 +145,7 @@ None so far.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2009 Nadim Khemir.
+Copyright 2010 Nadim Khemir.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of either:
@@ -162,3 +192,4 @@ L<http://search.cpan.org/dist/Test-Skip>
 L<Test::Skip::UnlessExistsExecutable>, L<Test::Requires>
 
 =cut
+
